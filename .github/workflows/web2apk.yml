@@ -16,19 +16,47 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Build Web ke APK
-        uses: ayoitsali/web-to-apk-action@v1.0.0
-        with:
-          app_name: ${{ github.event.inputs.app_name }}
-          app_url: ${{ github.event.inputs.web_url }}
-          icon_url: ${{ github.event.inputs.icon_url }}
-          app_id: com.putxz.apk
-          app_version: "1.0.0"
-          app_version_code: "1"
-          build_type: "release"
+      - name: Pasang dependensi yang dibutuhkan
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk wget unzip nodejs npm
 
-      - name: Simpan file APK
+      - name: Unduh template WebView
+        run: |
+          wget -q https://github.com/putxzdev/webview-template/archive/refs/heads/main.zip -O template.zip
+          unzip -q template.zip
+          mv webview-template-main android-project
+
+      - name: Konfigurasi aplikasi
+        env:
+          APP_NAME: ${{ github.event.inputs.app_name }}
+          APP_URL: ${{ github.event.inputs.web_url }}
+          APP_ID: com.putxz.apk
+        run: |
+          cd android-project
+          sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" app/src/main/res/values/strings.xml
+          sed -i "s|APP_URL_PLACEHOLDER|$APP_URL|g" app/src/main/java/com/example/webviewapp/MainActivity.java
+          sed -i "s|com.example.webviewapp|$APP_ID|g" app/build.gradle
+          sed -i "s|com.example.webviewapp|$APP_ID|g" app/src/main/java/com/example/webviewapp/MainActivity.java
+          mv app/src/main/java/com/example/webviewapp "app/src/main/java/$(echo $APP_ID | tr '.' '/')"
+
+      - name: Unduh dan pasang ikon
+        if: ${{ inputs.icon_url != '' }}
+        env:
+          ICON_URL: ${{ github.event.inputs.icon_url }}
+        run: |
+          cd android-project
+          wget -q "$ICON_URL" -O icon.png
+          convert icon.png -resize 512x512 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Build APK
+        run: |
+          cd android-project
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Simpan hasil APK
         uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
-          path: "*.apk"
+          path: android-project/app/build/outputs/apk/release/app-release.apk
