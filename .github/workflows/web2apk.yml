@@ -17,32 +17,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
-      - name: Inject & Build
+      - name: Generate & Inject & Build
         run: |
-          # Cari lokasi main.dart secara dinamis agar tidak error
-          MAIN_FILE=$(find . -name "main.dart" | head -n 1)
+          # 1. Buat proyek baru karena repo kosong
+          flutter create my_app
+          cd my_app
           
-          if [ -z "$MAIN_FILE" ]; then
-            echo "Error: File main.dart tidak ditemukan di repo!"
-            exit 1
-          fi
+          # 2. Hapus isi main.dart bawaan dan ganti dengan WebView sederhana
+          # (Ini cara paling praktis tanpa harus punya file main.dart di repo)
+          cat <<EOF > lib/main.dart
+          import 'package:flutter/material.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
+          void main() => runApp(MaterialApp(home: Scaffold(body: SafeArea(child: WebView(initialUrl: '${{ github.event.inputs.web_url }}', javascriptMode: JavascriptMode.unrestricted)))));
+          EOF
           
-          # Ganti URL menggunakan path yang ditemukan
-          sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" "$MAIN_FILE"
-          
-          # Download Icon
-          mkdir -p assets
-          curl -L "${{ github.event.inputs.icon_url }}" -o assets/app_icon.png
-          
-          # Build
+          # 3. Setup Icon & Build
+          flutter pub add webview_flutter
           flutter pub get
           flutter build apk --release
 
@@ -50,4 +45,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: my_app/build/app/outputs/flutter-apk/app-release.apk
