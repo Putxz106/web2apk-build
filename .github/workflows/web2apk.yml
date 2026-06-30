@@ -16,13 +16,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: cemcoe/web-to-apk-action@v1
+      - name: Build Web to APK
+        uses: cemcoe/web-to-apk-action@v1
         with:
           app_name: ${{ github.event.inputs.app_name }}
           app_url: ${{ github.event.inputs.web_url }}
           icon_url: ${{ github.event.inputs.icon_url }}
-          app_id: com.putxz.${{ github.event.inputs.app_name }}
-      - uses: actions/upload-artifact@v4
+          app_id: com.putxz.apk
+
+      - name: Upload hasil APK
+        uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
           path: "*.apk"
