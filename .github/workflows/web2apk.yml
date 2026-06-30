@@ -1,87 +1,75 @@
-name: Web2APK Build
-
+name: Build Web2APK
 on:
-  workflow_dispatch:
-    inputs:
-      web_url:
-        description: "Alamat Website"
-        required: true
-      app_name:
-        description: "Nama Aplikasi"
-        required: true
-      icon_url:
-        description: "URL Icon"
-        required: false
+  workflow_dispatch: # Biar bisa di-run manual
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # Update ke checkout@v4 untuk ngilangin warning Node.js
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Dependency
+      # Update setup-node ke v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download & Extract Template Android-SmartWebView
         run: |
-          sudo apt update
-          sudo apt install -y openjdk-17-jdk wget unzip imagemagick
-
-      - name: Download Template
-        run: |
-          set -e
-
-          wget -O template.zip https://github.com/mgks/Android-WebView-App/archive/refs/heads/master.zip || \
-          wget -O template.zip https://github.com/mgks/Android-WebView-App/archive/refs/heads/main.zip
-
-          unzip template.zip
-
-          DIR=$(find . -maxdepth 1 -type d -name "Android-WebView-App-*")
-
+          echo "Mengunduh template WebView terbaru..."
+          # Menggunakan repo mgks yang aktif
+          wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/master.zip
+          
+          echo "Mengekstrak file zip..."
+          unzip -q template.zip
+          
+          # Cari nama folder hasil ekstraknya 
+          DIR=$(find . -maxdepth 1 -type d -name "Android-SmartWebView-*")
+          
+          # Validasi kalau foldernya gagal dicari / master.zip nggak ada
           if [ -z "$DIR" ]; then
-            echo "Template tidak ditemukan!"
-            ls -la
-            exit 1
+            echo "Template master tidak ditemukan! Mencoba branch main..."
+            wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/main.zip
+            unzip -q -o template.zip
+            DIR=$(find . -maxdepth 1 -type d -name "Android-SmartWebView-*")
+            
+            if [ -z "$DIR" ]; then
+              echo "Template benar-benar tidak ditemukan!"
+              ls -la
+              exit 1
+            fi
           fi
-
+          
+          echo "Mengganti nama folder menjadi android-project..."
           mv "$DIR" android-project
+          
+          # Pastikan file berhasil dipindah
+          ls -la android-project
+          
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Rekomendasi Java buat build Android modern
 
-      - name: Ubah Data Aplikasi
-        env:
-          APP_NAME: ${{ github.event.inputs.app_name }}
-          APP_URL: ${{ github.event.inputs.web_url }}
-          APP_ID: com.putxz.apk
+      - name: Build APK (Gradle)
         run: |
           cd android-project
-
-          find . -name strings.xml -exec sed -i "s|Android WebView App|$APP_NAME|g" {} \;
-
-          FILE=$(find . -name MainActivity.java | head -n1)
-
-          if [ -n "$FILE" ]; then
-            sed -i "s|https://example.com|$APP_URL|g" "$FILE"
-          fi
-
-      - name: Pasang Icon
-        if: ${{ github.event.inputs.icon_url != '' }}
-        run: |
-          cd android-project
-
-          wget "${{ github.event.inputs.icon_url }}" -O icon.png
-
-          for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi
-          do
-            mkdir -p app/src/main/res/$dir
-            convert icon.png -resize 512x512 app/src/main/res/$dir/ic_launcher.png
-          done
-
-      - name: Build APK
-        run: |
-          cd android-project
+          
+          # Note: Kalau lu punya script buat otomatis ngubah URL web-nya, taruh di sini
+          # Contoh: sed -i 's/URL_LAMA/URL_BARU/g' app/src/main/assets/swv.properties
+          
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK Release
         uses: actions/upload-artifact@v4
         with:
-          name: Web2APK
-          path: android-project/app/build/outputs/apk/release/*.apk
+          name: Web2APK-Build
+          path: android-project/app/build/outputs/apk/debug/*.apk
