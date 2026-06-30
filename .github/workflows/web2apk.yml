@@ -3,13 +3,13 @@ on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: "Alamat situs"
+        description: "Alamat situs web"
         required: true
       app_name:
         description: "Nama aplikasi"
         required: true
       icon_url:
-        description: "URL ikon"
+        description: "URL ikon/logo"
         required: false
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
           app_name: ${{ github.event.inputs.app_name }}
           app_url: ${{ github.event.inputs.web_url }}
           icon_url: ${{ github.event.inputs.icon_url }}
-          app_id: com.putxz.${{ github.event.inputs.app_name | lowercase }}
+          app_id: com.putxz.${{ github.event.inputs.app_name }}
       - uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
