@@ -16,168 +16,37 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: 1. Pasang alat
-        run: |
-          sudo apt update -y
-          sudo apt install -y openjdk-17-jdk wget unzip imagemagick
+      - name: Pasang alat
+        run: sudo apt update -y && sudo apt install -y openjdk-17-jdk wget unzip imagemagick
 
-      - name: 2. Buat folder proyek
-        run: |
-          APP_ID=com.putxz.apk
-          PKG=com/putxz/apk
-          B=android-project
-          mkdir -p $B/app/src/main/java/$PKG
-          mkdir -p $B/app/src/main/res/values
-          mkdir -p $B/app/src/main/res/mipmap-xxxhdpi
-          mkdir -p $B/gradle/wrapper
+      - name: Unduh template siap pakai yang pasti ada
+        run: wget -q https://github.com/mgks/Android-WebView-App/archive/refs/heads/master.zip -O template.zip && unzip -q template.zip && mv Android-WebView-App-master android-project
 
-      - name: 3. Tulis build.gradle ROOT
-        run: |
-          B=android-project
-          {
-            echo "buildscript {"
-            echo "    repositories {"
-            echo "        google()"
-            echo "        mavenCentral()"
-            echo "    }"
-            echo "    dependencies {"
-            echo "        classpath 'com.android.tools.build:gradle:7.4.2'"
-            echo "    }"
-            echo "}"
-            echo "allprojects {"
-            echo "    repositories {"
-            echo "        google()"
-            echo "        mavenCentral()"
-            echo "    }"
-            echo "}"
-          } > $B/build.gradle
-
-      - name: 4. Tulis build.gradle APP
-        run: |
-          B=android-project
-          {
-            echo "plugins { id 'com.android.application' }"
-            echo "android {"
-            echo "    namespace 'com.putxz.apk'"
-            echo "    compileSdk 33"
-            echo "    defaultConfig {"
-            echo "        applicationId 'com.putxz.apk'"
-            echo "        minSdk 21"
-            echo "        targetSdk 33"
-            echo "        versionCode 1"
-            echo "        versionName '1.0'"
-            echo "    }"
-            echo "    buildTypes { release { minifyEnabled false } }"
-            echo "    compileOptions {"
-            echo "        sourceCompatibility JavaVersion.VERSION_1_8"
-            echo "        targetCompatibility JavaVersion.VERSION_1_8"
-            echo "    }"
-            echo "}"
-            echo "dependencies {"
-            echo "    implementation 'androidx.appcompat:appcompat:1.6.1'"
-            echo "}"
-          } > $B/app/build.gradle
-
-      - name: 5. Tulis settings.gradle
-        run: |
-          B=android-project
-          {
-            echo "pluginManagement {"
-            echo "    repositories { google(); mavenCentral() }"
-            echo "}"
-            echo "dependencyResolutionManagement {"
-            echo "    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)"
-            echo "    repositories { google(); mavenCentral() }"
-            echo "}"
-            echo "include ':app'"
-          } > $B/settings.gradle
-
-      - name: 6. Tulis AndroidManifest.xml
-        run: |
-          B=android-project
-          F=$B/app/src/main/AndroidManifest.xml
-          echo '<?xml version="1.0" encoding="utf-8"?>' > $F
-          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">' >> $F
-          echo '    <uses-permission android:name="android.permission.INTERNET"/>' >> $F
-          echo '    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' >> $F
-          echo '    <application android:icon="@mipmap/ic_launcher" android:label="APPNAME" android:usesCleartextTraffic="true" android:theme="@style/Theme.AppCompat.Light.NoActionBar">' >> $F
-          echo '        <activity android:name=".MainActivity" android:exported="true">' >> $F
-          echo '            <intent-filter>' >> $F
-          echo '                <action android:name="android.intent.action.MAIN"/>' >> $F
-          echo '                <category android:name="android.intent.category.LAUNCHER"/>' >> $F
-          echo '            </intent-filter>' >> $F
-          echo '        </activity>' >> $F
-          echo '    </application>' >> $F
-          echo '</manifest>' >> $F
-
-      - name: 7. Tulis strings.xml
-        run: |
-          B=android-project
-          F=$B/app/src/main/res/values/strings.xml
-          echo '<resources>' > $F
-          echo '    <string name="app_name">APPNAME</string>' >> $F
-          echo '</resources>' >> $F
-
-      - name: 8. Tulis MainActivity.java
-        run: |
-          B=android-project
-          F=$B/app/src/main/java/com/putxz/apk/MainActivity.java
-          {
-            echo "package com.putxz.apk;"
-            echo "import android.os.Bundle;"
-            echo "import androidx.appcompat.app.AppCompatActivity;"
-            echo "import android.webkit.WebView;"
-            echo "import android.webkit.WebViewClient;"
-            echo "public class MainActivity extends AppCompatActivity {"
-            echo "    protected void onCreate(Bundle savedInstanceState) {"
-            echo "        super.onCreate(savedInstanceState);"
-            echo "        WebView w = new WebView(this);"
-            echo "        w.getSettings().setJavaScriptEnabled(true);"
-            echo "        w.getSettings().setDomStorageEnabled(true);"
-            echo "        w.setWebViewClient(new WebViewClient());"
-            echo "        w.loadUrl(\"APPURL\");"
-            echo "        setContentView(w);"
-            echo "    }"
-            echo "}"
-          } > $F
-
-      - name: 9. Siapkan Gradle Wrapper
-        run: |
-          B=android-project
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.5-bin.zip" > $B/gradle/wrapper/gradle-wrapper.properties
-          wget -q --tries=5 --timeout=15 "https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradle/wrapper/gradle-wrapper.jar" -O $B/gradle/wrapper/gradle-wrapper.jar || true
-          printf '#!/bin/sh\nexec java -jar "$(dirname "$0")/gradle/wrapper/gradle-wrapper.jar" "$@"\n' > $B/gradlew
-          chmod +x $B/gradlew
-
-      - name: 10. Isi nama & URL dari bot
+      - name: Sesuaikan data
         env:
-          NAMA: ${{ github.event.inputs.app_name }}
-          URL: ${{ github.event.inputs.web_url }}
-        run: |
-          B=android-project
-          sed -i "s|APPNAME|$NAMA|g" $B/app/src/main/AndroidManifest.xml $B/app/src/main/res/values/strings.xml
-          sed -i "s|APPURL|$URL|g" $B/app/src/main/java/com/putxz/apk/MainActivity.java
-
-      - name: 11. Pasang ikon jika ada
-        run: |
-          I="${{ inputs.icon_url }}"
-          if [ -n "$I" ]; then
-            wget -q --tries=3 --timeout=10 --no-check-certificate "$I" -O icon.png || true
-            if [ -s icon.png ]; then
-              convert icon.png -resize 512x512 android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-            fi
-          fi
-          # Buat ikon default kalau kosong
-          if [ ! -f android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png ]; then
-            convert -size 512x512 xc:#2563eb android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          fi
-
-      - name: 12. Build APK
+          APP_NAME: ${{ github.event.inputs.app_name }}
+          APP_URL: ${{ github.event.inputs.web_url }}
+          APP_ID: com.putxz.apk
         run: |
           cd android-project
-          ./gradlew clean assembleRelease --no-daemon --max-workers 2
+          sed -i "s|Android WebView App|$APP_NAME|g" app/src/main/res/values/strings.xml
+          sed -i "s|https://example.com|$APP_URL|g" app/src/main/java/com/mgks/webview/MainActivity.java
+          sed -i "s|com.mgks.webview|$APP_ID|g" app/build.gradle
+          sed -i "s|com.mgks.webview|$APP_ID|g" app/src/main/java/com/mgks/webview/MainActivity.java
+          mkdir -p "app/src/main/java/$(echo $APP_ID | tr '.' '/')"
+          mv app/src/main/java/com/mgks/webview/* "app/src/main/java/$(echo $APP_ID | tr '.' '/')/"
 
-      - name: 13. Kirim hasil
+      - name: Pasang ikon
+        if: ${{ inputs.icon_url != '' }}
+        run: |
+          cd android-project
+          wget -q "${{ inputs.icon_url }}" -O icon.png
+          convert icon.png -resize 512x512 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Build APK
+        run: cd android-project && chmod +x gradlew && ./gradlew clean assembleRelease --no-build-cache
+
+      - name: Simpan hasil
         uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
