@@ -17,31 +17,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Template
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          repository: 'Putxz106/template-webview' # Pastikan repo template ini ada
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
-      - name: Inject Configuration
+      - name: Inject & Build
         run: |
-          # 1. Ganti URL di main.dart (sesuaikan dengan kode di template kamu)
           sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" lib/main.dart
-          
-          # 2. Ganti Nama Aplikasi di AndroidManifest
           sed -i "s|NAMA_APP_DISINI|${{ github.event.inputs.app_name }}|g" android/app/src/main/AndroidManifest.xml
-          
-          # 3. Download & Ganti Icon
           curl -L "${{ github.event.inputs.icon_url }}" -o assets/app_icon.png
           flutter pub get
           flutter pub run flutter_launcher_icons:main
-
-      - name: Build APK Release
-        run: |
           flutter build apk --release
 
       - name: Upload Artifact
