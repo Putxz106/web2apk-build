@@ -1,53 +1,87 @@
 name: Web2APK Build
+
 on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: "Alamat situs web"
+        description: "Alamat Website"
         required: true
       app_name:
-        description: "Nama aplikasi"
+        description: "Nama Aplikasi"
         required: true
       icon_url:
-        description: "URL ikon/logo"
+        description: "URL Icon"
         required: false
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
-      - name: Pasang alat
-        run: sudo apt update -y && sudo apt install -y openjdk-17-jdk wget unzip imagemagick
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Unduh template siap pakai yang pasti ada
-        run: wget -q https://github.com/mgks/Android-WebView-App/archive/refs/heads/master.zip -O template.zip && unzip -q template.zip && mv Android-WebView-App-master android-project
+      - name: Install Dependency
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk wget unzip imagemagick
 
-      - name: Sesuaikan data
+      - name: Download Template
+        run: |
+          set -e
+
+          wget -O template.zip https://github.com/mgks/Android-WebView-App/archive/refs/heads/master.zip || \
+          wget -O template.zip https://github.com/mgks/Android-WebView-App/archive/refs/heads/main.zip
+
+          unzip template.zip
+
+          DIR=$(find . -maxdepth 1 -type d -name "Android-WebView-App-*")
+
+          if [ -z "$DIR" ]; then
+            echo "Template tidak ditemukan!"
+            ls -la
+            exit 1
+          fi
+
+          mv "$DIR" android-project
+
+      - name: Ubah Data Aplikasi
         env:
           APP_NAME: ${{ github.event.inputs.app_name }}
           APP_URL: ${{ github.event.inputs.web_url }}
           APP_ID: com.putxz.apk
         run: |
           cd android-project
-          sed -i "s|Android WebView App|$APP_NAME|g" app/src/main/res/values/strings.xml
-          sed -i "s|https://example.com|$APP_URL|g" app/src/main/java/com/mgks/webview/MainActivity.java
-          sed -i "s|com.mgks.webview|$APP_ID|g" app/build.gradle
-          sed -i "s|com.mgks.webview|$APP_ID|g" app/src/main/java/com/mgks/webview/MainActivity.java
-          mkdir -p "app/src/main/java/$(echo $APP_ID | tr '.' '/')"
-          mv app/src/main/java/com/mgks/webview/* "app/src/main/java/$(echo $APP_ID | tr '.' '/')/"
 
-      - name: Pasang ikon
-        if: ${{ inputs.icon_url != '' }}
+          find . -name strings.xml -exec sed -i "s|Android WebView App|$APP_NAME|g" {} \;
+
+          FILE=$(find . -name MainActivity.java | head -n1)
+
+          if [ -n "$FILE" ]; then
+            sed -i "s|https://example.com|$APP_URL|g" "$FILE"
+          fi
+
+      - name: Pasang Icon
+        if: ${{ github.event.inputs.icon_url != '' }}
         run: |
           cd android-project
-          wget -q "${{ inputs.icon_url }}" -O icon.png
-          convert icon.png -resize 512x512 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          wget "${{ github.event.inputs.icon_url }}" -O icon.png
+
+          for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi
+          do
+            mkdir -p app/src/main/res/$dir
+            convert icon.png -resize 512x512 app/src/main/res/$dir/ic_launcher.png
+          done
 
       - name: Build APK
-        run: cd android-project && chmod +x gradlew && ./gradlew clean assembleRelease --no-build-cache
+        run: |
+          cd android-project
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
-      - name: Simpan hasil
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: web2apk-apk
-          path: android-project/app/build/outputs/apk/release/app-release.apk
+          name: Web2APK
+          path: android-project/app/build/outputs/apk/release/*.apk
