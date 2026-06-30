@@ -1,0 +1,28 @@
+name: Web2APK Build
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: "Alamat situs"
+        required: true
+      app_name:
+        description: "Nama aplikasi"
+        required: true
+      icon_url:
+        description: "URL ikon"
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cemcoe/web-to-apk-action@v1
+        with:
+          app_name: ${{ github.event.inputs.app_name }}
+          app_url: ${{ github.event.inputs.web_url }}
+          icon_url: ${{ github.event.inputs.icon_url }}
+          app_id: com.putxz.${{ github.event.inputs.app_name | lowercase }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web2apk-apk
+          path: "*.apk"
