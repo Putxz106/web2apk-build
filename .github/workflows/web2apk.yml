@@ -1,86 +1,38 @@
-name: Build Web2APK
+name: Flutter Web2APK Build
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
     inputs:
-      web_url:
-        description: 'URL Website dari bot'
+      repo_url:
+        description: 'URL GitHub Repo'
+        required: true
+      branch:
+        description: 'Branch'
+        default: 'main'
         required: false
-        type: string
-      app_name:
-        description: 'Nama Aplikasi dari bot'
-        required: false
-        type: string
-      icon_url:
-        description: 'URL Icon dari bot'
-        required: false
-        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v3
         with:
-          node-version: '20'
+          repository: ${{ github.event.inputs.repo_url }}
+          ref: ${{ github.event.inputs.branch }}
 
-      - name: Download & Extract Template Android-SmartWebView
-        run: |
-          echo "Mengunduh template WebView terbaru..."
-          wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/master.zip
-          
-          echo "Mengekstrak file zip..."
-          unzip -q template.zip
-          
-          DIR=$(find . -maxdepth 1 -type d -name "Android-SmartWebView-*")
-          
-          if [ -z "$DIR" ]; then
-            echo "Template master tidak ditemukan! Mencoba branch main..."
-            wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/main.zip
-            unzip -q -o template.zip
-            DIR=$(find . -maxdepth 1 -type d -name "Android-SmartWebView-*")
-            
-            if [ -z "$DIR" ]; then
-              echo "Template benar-benar tidak ditemukan!"
-              ls -la
-              exit 1
-            fi
-          fi
-          
-          echo "Mengganti nama folder menjadi android-project..."
-          mv "$DIR" android-project
-          ls -la android-project
-          
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          flutter-version: '3.x'
 
-      - name: Terapkan Variabel dari Bot (Opsional)
+      - name: Build APK Release
         run: |
-          # Bagian ini sekadar nge-print variabel dari bot buat mastiin data masuk
-          echo "Memproses aplikasi: ${{ github.event.inputs.app_name }}"
-          echo "URL tujuan: ${{ github.event.inputs.web_url }}"
-          echo "URL icon: ${{ github.event.inputs.icon_url }}"
-          # Kalau lu mau nerapin nama/url ini ke source code Android otomatis, kodingannya bisa ditambah di sini nanti.
+          flutter pub get
+          flutter build apk --release --split-per-abi # Mode release, ukuran leuwih leutik[span_1](start_span)[span_1](end_span)
 
-      - name: Build APK (Gradle)
-        run: |
-          cd android-project
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Upload APK Release
-        uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: Web2APK-Build
-          path: android-project/app/build/outputs/apk/debug/*.apk
+          name: app-release # Ngaran artifact kudu konsisten[span_2](start_span)[span_2](end_span)
+          path: build/app/outputs/flutter-apk/app-release.apk # Jalur file release[span_3](start_span)[span_3](end_span)
