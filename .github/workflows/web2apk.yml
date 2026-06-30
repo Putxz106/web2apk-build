@@ -1,20 +1,32 @@
 name: Build Web2APK
+
 on:
-  workflow_dispatch: # Biar bisa di-run manual
   push:
     branches:
       - main
       - master
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'URL Website dari bot'
+        required: false
+        type: string
+      app_name:
+        description: 'Nama Aplikasi dari bot'
+        required: false
+        type: string
+      icon_url:
+        description: 'URL Icon dari bot'
+        required: false
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Update ke checkout@v4 untuk ngilangin warning Node.js
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Update setup-node ke v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -23,16 +35,13 @@ jobs:
       - name: Download & Extract Template Android-SmartWebView
         run: |
           echo "Mengunduh template WebView terbaru..."
-          # Menggunakan repo mgks yang aktif
           wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/master.zip
           
           echo "Mengekstrak file zip..."
           unzip -q template.zip
           
-          # Cari nama folder hasil ekstraknya 
           DIR=$(find . -maxdepth 1 -type d -name "Android-SmartWebView-*")
           
-          # Validasi kalau foldernya gagal dicari / master.zip nggak ada
           if [ -z "$DIR" ]; then
             echo "Template master tidak ditemukan! Mencoba branch main..."
             wget -O template.zip https://github.com/mgks/Android-SmartWebView/archive/refs/heads/main.zip
@@ -48,23 +57,25 @@ jobs:
           
           echo "Mengganti nama folder menjadi android-project..."
           mv "$DIR" android-project
-          
-          # Pastikan file berhasil dipindah
           ls -la android-project
           
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17' # Rekomendasi Java buat build Android modern
+          java-version: '17'
+
+      - name: Terapkan Variabel dari Bot (Opsional)
+        run: |
+          # Bagian ini sekadar nge-print variabel dari bot buat mastiin data masuk
+          echo "Memproses aplikasi: ${{ github.event.inputs.app_name }}"
+          echo "URL tujuan: ${{ github.event.inputs.web_url }}"
+          echo "URL icon: ${{ github.event.inputs.icon_url }}"
+          # Kalau lu mau nerapin nama/url ini ke source code Android otomatis, kodingannya bisa ditambah di sini nanti.
 
       - name: Build APK (Gradle)
         run: |
           cd android-project
-          
-          # Note: Kalau lu punya script buat otomatis ngubah URL web-nya, taruh di sini
-          # Contoh: sed -i 's/URL_LAMA/URL_BARU/g' app/src/main/assets/swv.properties
-          
           chmod +x gradlew
           ./gradlew assembleDebug
 
