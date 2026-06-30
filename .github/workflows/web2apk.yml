@@ -16,48 +16,172 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Pasang alat
+      - name: 1. Pasang alat
         run: |
-          set -e
           sudo apt update -y
           sudo apt install -y openjdk-17-jdk wget unzip imagemagick
 
-      - name: Unduh template siap pakai
+      - name: 2. Buat semua file proyek ANDROID SENDIRI (TIDAK UNDUH ORANG)
         run: |
-          wget -q https://github.com/kevalpatel2106/simple-webview-apk/archive/refs/heads/master.zip -O template.zip
-          unzip -q template.zip
-          mv simple-webview-apk-master android-project
+          APP_ID="com.putxz.apk"
+          PKG_FOLDER=$(echo "$APP_ID" | tr '.' '/')
+          BASE="android-project"
 
-      - name: Konfigurasi aplikasi
+          mkdir -p "$BASE/app/src/main/java/$PKG_FOLDER"
+          mkdir -p "$BASE/app/src/main/res/values"
+          mkdir -p "$BASE/app/src/main/res/mipmap-xxxhdpi"
+          mkdir -p "$BASE/gradle/wrapper"
+
+          # === build.gradle ROOT ===
+          cat > "$BASE/build.gradle" <<'GRADLE1'
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+GRADLE1
+
+          # === build.gradle APP ===
+          cat > "$BASE/app/build.gradle" <<GRADLE2
+plugins { id 'com.android.application' }
+android {
+    namespace "$APP_ID"
+    compileSdk 33
+    defaultConfig {
+        applicationId "$APP_ID"
+        minSdk 21
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
+GRADLE2
+
+          # === settings.gradle ===
+          cat > "$BASE/settings.gradle" <<'SET'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+include ':app'
+SET
+
+          # === AndroidManifest.xml ===
+          cat > "$BASE/app/src/main/AndroidManifest.xml" <<MANIFEST
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="MyApp"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+MANIFEST
+
+          # === strings.xml ===
+          cat > "$BASE/app/src/main/res/values/strings.xml" <<STR
+<resources>
+    <string name="app_name">MyApp</string>
+</resources>
+STR
+
+          # === MainActivity.java ===
+          cat > "$BASE/app/src/main/java/$PKG_FOLDER/MainActivity.java" <<JAVA
+package $APP_ID;
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        WebView wv = new WebView(this);
+        WebSettings ws = wv.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setLoadsImagesAutomatically(true);
+        wv.setWebViewClient(new WebViewClient());
+        wv.loadUrl("https://google.com");
+        setContentView(wv);
+    }
+}
+JAVA
+
+          # === gradle-wrapper ===
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.5-bin.zip" > "$BASE/gradle/wrapper/gradle-wrapper.properties"
+          wget -q --tries=5 --timeout=15 "https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradle/wrapper/gradle-wrapper.jar" -O "$BASE/gradle/wrapper/gradle-wrapper.jar"
+          printf '#!/bin/sh\n\nexec java -jar "$(dirname "$0")/gradle/wrapper/gradle-wrapper.jar" "$@"\n' > "$BASE/gradlew"
+          chmod +x "$BASE/gradlew"
+
+      - name: 3. Ganti nama & url sesuai input
         env:
           APP_NAME: ${{ github.event.inputs.app_name }}
           APP_URL: ${{ github.event.inputs.web_url }}
-          APP_ID: com.putxz.apk
         run: |
-          cd android-project
-          sed -i "s|SimpleWebViewApp|$APP_NAME|g" app/src/main/res/values/strings.xml
-          sed -i "s|https://example.com|$APP_URL|g" app/src/main/java/com/example/webview/MainActivity.java
-          sed -i "s|com.example.webview|$APP_ID|g" app/build.gradle
-          sed -i "s|com.example.webview|$APP_ID|g" app/src/main/java/com/example/webview/MainActivity.java
-          mkdir -p "app/src/main/java/$(echo $APP_ID | tr '.' '/')"
-          mv app/src/main/java/com/example/webview/* "app/src/main/java/$(echo $APP_ID | tr '.' '/')/"
+          APP_ID="com.putxz.apk"
+          PKG_FOLDER=$(echo "$APP_ID" | tr '.' '/')
+          BASE="android-project"
+          sed -i "s|MyApp|$APP_NAME|g" "$BASE/app/src/main/AndroidManifest.xml" "$BASE/app/src/main/res/values/strings.xml"
+          sed -i "s|https://google.com|$APP_URL|g" "$BASE/app/src/main/java/$PKG_FOLDER/MainActivity.java"
 
-      - name: Pasang ikon
+      - name: 4. Pasang ikon jika ada
         if: ${{ inputs.icon_url != '' }}
-        env:
-          ICON_URL: ${{ inputs.icon_url }}
+        run: |
+          wget -q --tries=5 --timeout=15 --no-check-certificate "${{ inputs.icon_url }}" -O icon.png || true
+          if [ -f icon.png ]; then
+            convert icon.png -resize 512x512 android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          fi
+
+      - name: 5. Build APK
         run: |
           cd android-project
-          wget -q "$ICON_URL" -O icon.png
-          convert icon.png -resize 512x512 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          ./gradlew clean assembleRelease --no-daemon --max-workers 2
 
-      - name: Build APK
-        run: |
-          cd android-project
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-build-cache
-
-      - name: Simpan hasil
+      - name: 6. Upload hasil APK
         uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
