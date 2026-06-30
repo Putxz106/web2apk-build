@@ -27,11 +27,14 @@ jobs:
 
       - name: Inject & Build
         run: |
+          # Ganti URL di main.dart saja
           sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" lib/main.dart
-          sed -i "s|NAMA_APP_DISINI|${{ github.event.inputs.app_name }}|g" android/app/src/main/AndroidManifest.xml
+          
+          # Download Icon
           curl -L "${{ github.event.inputs.icon_url }}" -o assets/app_icon.png
+          
+          # Build
           flutter pub get
-          flutter pub run flutter_launcher_icons:main
           flutter build apk --release
 
       - name: Upload Artifact
