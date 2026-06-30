@@ -16,31 +16,33 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Pasang alat yang dibutuhkan
+      - name: Pasang semua alat
         run: |
           set -e
           sudo apt update -y
-          sudo apt install -y openjdk-17-jdk wget unzip git imagemagick
+          sudo apt install -y openjdk-17-jdk wget unzip imagemagick
 
-      - name: Ambil template WebView yang valid
+      - name: Unduh template yang pasti ada
         run: |
-          git clone --depth=1 https://github.com/slymax/webview-template.git android-project
+          wget -q https://github.com/xphoenixz/simple-webview-apk/archive/refs/heads/main.zip -O template.zip
+          unzip -q template.zip
+          mv simple-webview-apk-main android-project
 
-      - name: Siapkan variabel
+      - name: Sesuaikan nama & alamat web
         env:
           APP_NAME: ${{ github.event.inputs.app_name }}
           APP_URL: ${{ github.event.inputs.web_url }}
           APP_ID: com.putxz.apk
         run: |
           cd android-project
-          sed -i "s|WebViewApp|$APP_NAME|g" app/src/main/res/values/strings.xml
-          sed -i "s|https://example.com|$APP_URL|g" app/src/main/java/com/slymax/webview/MainActivity.java
-          sed -i "s|com.slymax.webview|$APP_ID|g" app/build.gradle
-          sed -i "s|com.slymax.webview|$APP_ID|g" app/src/main/java/com/slymax/webview/MainActivity.java
+          sed -i "s|MyWebApp|$APP_NAME|g" app/src/main/res/values/strings.xml
+          sed -i "s|https://contoh-situs.com|$APP_URL|g" app/src/main/java/com/example/webview/MainActivity.java
+          sed -i "s|com.example.webview|$APP_ID|g" app/build.gradle
+          sed -i "s|com.example.webview|$APP_ID|g" app/src/main/java/com/example/webview/MainActivity.java
           mkdir -p "app/src/main/java/$(echo $APP_ID | tr '.' '/')"
-          mv app/src/main/java/com/slymax/webview/* "app/src/main/java/$(echo $APP_ID | tr '.' '/')/"
+          mv app/src/main/java/com/example/webview/* "app/src/main/java/$(echo $APP_ID | tr '.' '/')/"
 
-      - name: Pasang ikon jika ada
+      - name: Pasang ikon kalau ada
         if: ${{ inputs.icon_url != '' }}
         env:
           ICON_URL: ${{ github.event.inputs.icon_url }}
@@ -49,13 +51,13 @@ jobs:
           wget -q "$ICON_URL" -O icon.png
           convert icon.png -resize 512x512 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Bangun file APK
+      - name: Bangun APK
         run: |
           cd android-project
           chmod +x gradlew
-          ./gradlew assembleRelease --info
+          ./gradlew assembleRelease --no-build-cache
 
-      - name: Simpan hasil APK
+      - name: Simpan hasil
         uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
