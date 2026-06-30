@@ -21,167 +21,163 @@ jobs:
           sudo apt update -y
           sudo apt install -y openjdk-17-jdk wget unzip imagemagick
 
-      - name: 2. Buat semua file proyek ANDROID SENDIRI (TIDAK UNDUH ORANG)
+      - name: 2. Buat folder proyek
         run: |
-          APP_ID="com.putxz.apk"
-          PKG_FOLDER=$(echo "$APP_ID" | tr '.' '/')
-          BASE="android-project"
+          APP_ID=com.putxz.apk
+          PKG=com/putxz/apk
+          B=android-project
+          mkdir -p $B/app/src/main/java/$PKG
+          mkdir -p $B/app/src/main/res/values
+          mkdir -p $B/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p $B/gradle/wrapper
 
-          mkdir -p "$BASE/app/src/main/java/$PKG_FOLDER"
-          mkdir -p "$BASE/app/src/main/res/values"
-          mkdir -p "$BASE/app/src/main/res/mipmap-xxxhdpi"
-          mkdir -p "$BASE/gradle/wrapper"
+      - name: 3. Tulis build.gradle ROOT
+        run: |
+          B=android-project
+          {
+            echo "buildscript {"
+            echo "    repositories {"
+            echo "        google()"
+            echo "        mavenCentral()"
+            echo "    }"
+            echo "    dependencies {"
+            echo "        classpath 'com.android.tools.build:gradle:7.4.2'"
+            echo "    }"
+            echo "}"
+            echo "allprojects {"
+            echo "    repositories {"
+            echo "        google()"
+            echo "        mavenCentral()"
+            echo "    }"
+            echo "}"
+          } > $B/build.gradle
 
-          # === build.gradle ROOT ===
-          cat > "$BASE/build.gradle" <<'GRADLE1'
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
-    }
-}
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-GRADLE1
+      - name: 4. Tulis build.gradle APP
+        run: |
+          B=android-project
+          {
+            echo "plugins { id 'com.android.application' }"
+            echo "android {"
+            echo "    namespace 'com.putxz.apk'"
+            echo "    compileSdk 33"
+            echo "    defaultConfig {"
+            echo "        applicationId 'com.putxz.apk'"
+            echo "        minSdk 21"
+            echo "        targetSdk 33"
+            echo "        versionCode 1"
+            echo "        versionName '1.0'"
+            echo "    }"
+            echo "    buildTypes { release { minifyEnabled false } }"
+            echo "    compileOptions {"
+            echo "        sourceCompatibility JavaVersion.VERSION_1_8"
+            echo "        targetCompatibility JavaVersion.VERSION_1_8"
+            echo "    }"
+            echo "}"
+            echo "dependencies {"
+            echo "    implementation 'androidx.appcompat:appcompat:1.6.1'"
+            echo "}"
+          } > $B/app/build.gradle
 
-          # === build.gradle APP ===
-          cat > "$BASE/app/build.gradle" <<GRADLE2
-plugins { id 'com.android.application' }
-android {
-    namespace "$APP_ID"
-    compileSdk 33
-    defaultConfig {
-        applicationId "$APP_ID"
-        minSdk 21
-        targetSdk 33
-        versionCode 1
-        versionName "1.0"
-    }
-    buildTypes {
-        release { minifyEnabled false }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-}
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-}
-GRADLE2
+      - name: 5. Tulis settings.gradle
+        run: |
+          B=android-project
+          {
+            echo "pluginManagement {"
+            echo "    repositories { google(); mavenCentral() }"
+            echo "}"
+            echo "dependencyResolutionManagement {"
+            echo "    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)"
+            echo "    repositories { google(); mavenCentral() }"
+            echo "}"
+            echo "include ':app'"
+          } > $B/settings.gradle
 
-          # === settings.gradle ===
-          cat > "$BASE/settings.gradle" <<'SET'
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-include ':app'
-SET
+      - name: 6. Tulis AndroidManifest.xml
+        run: |
+          B=android-project
+          F=$B/app/src/main/AndroidManifest.xml
+          echo '<?xml version="1.0" encoding="utf-8"?>' > $F
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android">' >> $F
+          echo '    <uses-permission android:name="android.permission.INTERNET"/>' >> $F
+          echo '    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>' >> $F
+          echo '    <application android:icon="@mipmap/ic_launcher" android:label="APPNAME" android:usesCleartextTraffic="true" android:theme="@style/Theme.AppCompat.Light.NoActionBar">' >> $F
+          echo '        <activity android:name=".MainActivity" android:exported="true">' >> $F
+          echo '            <intent-filter>' >> $F
+          echo '                <action android:name="android.intent.action.MAIN"/>' >> $F
+          echo '                <category android:name="android.intent.category.LAUNCHER"/>' >> $F
+          echo '            </intent-filter>' >> $F
+          echo '        </activity>' >> $F
+          echo '    </application>' >> $F
+          echo '</manifest>' >> $F
 
-          # === AndroidManifest.xml ===
-          cat > "$BASE/app/src/main/AndroidManifest.xml" <<MANIFEST
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="MyApp"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-        android:usesCleartextTraffic="true">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-MANIFEST
+      - name: 7. Tulis strings.xml
+        run: |
+          B=android-project
+          F=$B/app/src/main/res/values/strings.xml
+          echo '<resources>' > $F
+          echo '    <string name="app_name">APPNAME</string>' >> $F
+          echo '</resources>' >> $F
 
-          # === strings.xml ===
-          cat > "$BASE/app/src/main/res/values/strings.xml" <<STR
-<resources>
-    <string name="app_name">MyApp</string>
-</resources>
-STR
+      - name: 8. Tulis MainActivity.java
+        run: |
+          B=android-project
+          F=$B/app/src/main/java/com/putxz/apk/MainActivity.java
+          {
+            echo "package com.putxz.apk;"
+            echo "import android.os.Bundle;"
+            echo "import androidx.appcompat.app.AppCompatActivity;"
+            echo "import android.webkit.WebView;"
+            echo "import android.webkit.WebViewClient;"
+            echo "public class MainActivity extends AppCompatActivity {"
+            echo "    protected void onCreate(Bundle savedInstanceState) {"
+            echo "        super.onCreate(savedInstanceState);"
+            echo "        WebView w = new WebView(this);"
+            echo "        w.getSettings().setJavaScriptEnabled(true);"
+            echo "        w.getSettings().setDomStorageEnabled(true);"
+            echo "        w.setWebViewClient(new WebViewClient());"
+            echo "        w.loadUrl(\"APPURL\");"
+            echo "        setContentView(w);"
+            echo "    }"
+            echo "}"
+          } > $F
 
-          # === MainActivity.java ===
-          cat > "$BASE/app/src/main/java/$PKG_FOLDER/MainActivity.java" <<JAVA
-package $APP_ID;
-import android.os.Bundle;
-import androidx.appcompat.app.AppCompatActivity;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-public class MainActivity extends AppCompatActivity {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        WebView wv = new WebView(this);
-        WebSettings ws = wv.getSettings();
-        ws.setJavaScriptEnabled(true);
-        ws.setDomStorageEnabled(true);
-        ws.setLoadsImagesAutomatically(true);
-        wv.setWebViewClient(new WebViewClient());
-        wv.loadUrl("https://google.com");
-        setContentView(wv);
-    }
-}
-JAVA
+      - name: 9. Siapkan Gradle Wrapper
+        run: |
+          B=android-project
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.5-bin.zip" > $B/gradle/wrapper/gradle-wrapper.properties
+          wget -q --tries=5 --timeout=15 "https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradle/wrapper/gradle-wrapper.jar" -O $B/gradle/wrapper/gradle-wrapper.jar || true
+          printf '#!/bin/sh\nexec java -jar "$(dirname "$0")/gradle/wrapper/gradle-wrapper.jar" "$@"\n' > $B/gradlew
+          chmod +x $B/gradlew
 
-          # === gradle-wrapper ===
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.5-bin.zip" > "$BASE/gradle/wrapper/gradle-wrapper.properties"
-          wget -q --tries=5 --timeout=15 "https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradle/wrapper/gradle-wrapper.jar" -O "$BASE/gradle/wrapper/gradle-wrapper.jar"
-          printf '#!/bin/sh\n\nexec java -jar "$(dirname "$0")/gradle/wrapper/gradle-wrapper.jar" "$@"\n' > "$BASE/gradlew"
-          chmod +x "$BASE/gradlew"
-
-      - name: 3. Ganti nama & url sesuai input
+      - name: 10. Isi nama & URL dari bot
         env:
-          APP_NAME: ${{ github.event.inputs.app_name }}
-          APP_URL: ${{ github.event.inputs.web_url }}
+          NAMA: ${{ github.event.inputs.app_name }}
+          URL: ${{ github.event.inputs.web_url }}
         run: |
-          APP_ID="com.putxz.apk"
-          PKG_FOLDER=$(echo "$APP_ID" | tr '.' '/')
-          BASE="android-project"
-          sed -i "s|MyApp|$APP_NAME|g" "$BASE/app/src/main/AndroidManifest.xml" "$BASE/app/src/main/res/values/strings.xml"
-          sed -i "s|https://google.com|$APP_URL|g" "$BASE/app/src/main/java/$PKG_FOLDER/MainActivity.java"
+          B=android-project
+          sed -i "s|APPNAME|$NAMA|g" $B/app/src/main/AndroidManifest.xml $B/app/src/main/res/values/strings.xml
+          sed -i "s|APPURL|$URL|g" $B/app/src/main/java/com/putxz/apk/MainActivity.java
 
-      - name: 4. Pasang ikon jika ada
-        if: ${{ inputs.icon_url != '' }}
+      - name: 11. Pasang ikon jika ada
         run: |
-          wget -q --tries=5 --timeout=15 --no-check-certificate "${{ inputs.icon_url }}" -O icon.png || true
-          if [ -f icon.png ]; then
-            convert icon.png -resize 512x512 android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          I="${{ inputs.icon_url }}"
+          if [ -n "$I" ]; then
+            wget -q --tries=3 --timeout=10 --no-check-certificate "$I" -O icon.png || true
+            if [ -s icon.png ]; then
+              convert icon.png -resize 512x512 android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            fi
+          fi
+          # Buat ikon default kalau kosong
+          if [ ! -f android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png ]; then
+            convert -size 512x512 xc:#2563eb android-project/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           fi
 
-      - name: 5. Build APK
+      - name: 12. Build APK
         run: |
           cd android-project
           ./gradlew clean assembleRelease --no-daemon --max-workers 2
 
-      - name: 6. Upload hasil APK
+      - name: 13. Kirim hasil
         uses: actions/upload-artifact@v4
         with:
           name: web2apk-apk
