@@ -27,10 +27,19 @@ jobs:
 
       - name: Inject & Build
         run: |
-          # Ganti URL di main.dart saja
-          sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" lib/main.dart
+          # Cari lokasi main.dart secara dinamis agar tidak error
+          MAIN_FILE=$(find . -name "main.dart" | head -n 1)
+          
+          if [ -z "$MAIN_FILE" ]; then
+            echo "Error: File main.dart tidak ditemukan di repo!"
+            exit 1
+          fi
+          
+          # Ganti URL menggunakan path yang ditemukan
+          sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" "$MAIN_FILE"
           
           # Download Icon
+          mkdir -p assets
           curl -L "${{ github.event.inputs.icon_url }}" -o assets/app_icon.png
           
           # Build
