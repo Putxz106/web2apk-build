@@ -16,8 +16,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Siapkan lingkungan
+        uses: actions/checkout@v4
+
       - name: Build Web ke APK
-        uses: subham0704/web-to-apk-action@v2
+        uses: subham0704/web-to-apk-action@v2.1.0
         with:
           app_name: ${{ github.event.inputs.app_name }}
           app_url: ${{ github.event.inputs.web_url }}
