@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: 'URL Repo (Owner/Repo)'
+        description: 'URL File ZIP (.zip)'
         required: true
       app_name:
         description: 'Nama Aplikasi'
@@ -17,11 +17,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.web_url }}
-          path: 'repo_code'
+      - name: Download & Extract Source
+        run: |
+          curl -L "${{ github.event.inputs.web_url }}" -o source.zip
+          mkdir repo_code
+          unzip source.zip -d repo_code
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -30,19 +30,17 @@ jobs:
 
       - name: Build APK Release
         run: |
-          # Cari lokasi pubspec.yaml supaya tidak error 'project root'
+          # Cari folder yang ada pubspec.yaml
           cd repo_code
-          find . -maxdepth 2 -name "pubspec.yaml" -exec dirname {} \; > root_path.txt
-          PROJECT_ROOT=$(head -n 1 root_path.txt)
+          PROJECT_ROOT=$(find . -name "pubspec.yaml" -exec dirname {} \;)
           cd $PROJECT_ROOT
           
-          echo "Building from: $PROJECT_ROOT"
           flutter pub get
           flutter build apk --release
           
-          # Pindahkan hasil build ke folder utama agar bisa di-upload
-          mkdir -p ../build/app/outputs/flutter-apk/
-          cp build/app/outputs/flutter-apk/app-release.apk ../build/app/outputs/flutter-apk/app-release.apk
+          # Pindahkan file hasil build ke lokasi yang benar
+          mkdir -p ../../build/app/outputs/flutter-apk/
+          cp build/app/outputs/flutter-apk/app-release.apk ../../build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
