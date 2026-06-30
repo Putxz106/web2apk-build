@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: 'URL File ZIP (.zip)'
+        description: 'URL Website'
         required: true
       app_name:
         description: 'Nama Aplikasi'
@@ -17,30 +17,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Download & Extract Source
-        run: |
-          curl -L "${{ github.event.inputs.web_url }}" -o source.zip
-          mkdir repo_code
-          unzip source.zip -d repo_code
+      - name: Checkout Template
+        uses: actions/checkout@v4
+        with:
+          repository: 'Putxz106/template-webview' # Pastikan repo template ini ada
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
+      - name: Inject Configuration
+        run: |
+          # 1. Ganti URL di main.dart (sesuaikan dengan kode di template kamu)
+          sed -i "s|URL_WEB_DISINI|${{ github.event.inputs.web_url }}|g" lib/main.dart
+          
+          # 2. Ganti Nama Aplikasi di AndroidManifest
+          sed -i "s|NAMA_APP_DISINI|${{ github.event.inputs.app_name }}|g" android/app/src/main/AndroidManifest.xml
+          
+          # 3. Download & Ganti Icon
+          curl -L "${{ github.event.inputs.icon_url }}" -o assets/app_icon.png
+          flutter pub get
+          flutter pub run flutter_launcher_icons:main
+
       - name: Build APK Release
         run: |
-          # Cari folder yang ada pubspec.yaml
-          cd repo_code
-          PROJECT_ROOT=$(find . -name "pubspec.yaml" -exec dirname {} \;)
-          cd $PROJECT_ROOT
-          
-          flutter pub get
           flutter build apk --release
-          
-          # Pindahkan file hasil build ke lokasi yang benar
-          mkdir -p ../../build/app/outputs/flutter-apk/
-          cp build/app/outputs/flutter-apk/app-release.apk ../../build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
