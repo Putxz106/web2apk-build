@@ -1,48 +1,47 @@
-name: Flutter Web2APK Build
+name: Build Web2APK
 
 on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: 'URL Website'
+        description: "Website URL"
         required: true
       app_name:
-        description: 'Nama Aplikasi'
+        description: "App Name"
         required: true
-      icon_url:
-        description: 'URL Icon'
-        required: true
+        default: "MyApp"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: "3.24.5"
 
-      - name: Generate & Inject & Build
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      - name: Inject URL
         run: |
-          # 1. Buat proyek baru karena repo kosong
-          flutter create my_app
-          cd my_app
-          
-          # 2. Hapus isi main.dart bawaan dan ganti dengan WebView sederhana
-          # (Ini cara paling praktis tanpa harus punya file main.dart di repo)
-          cat <<EOF > lib/main.dart
-          import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
-          void main() => runApp(MaterialApp(home: Scaffold(body: SafeArea(child: WebView(initialUrl: '${{ github.event.inputs.web_url }}', javascriptMode: JavascriptMode.unrestricted)))));
-          EOF
-          
-          # 3. Setup Icon & Build
-          flutter pub add webview_flutter
-          flutter pub get
-          flutter build apk --release
+          sed -i "s|WEB_URL|${{ github.event.inputs.web_url }}|g" lib/main.dart
 
-      - name: Upload Artifact
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: my_app/build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ github.event.inputs.app_name }}
+          path: build/app/outputs/flutter-apk/app-release.apk
