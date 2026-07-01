@@ -1,15 +1,23 @@
-name: Build Web2APK
+name: Web2APK Build
 
 on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: "Website URL"
+        description: "Alamat Website"
         required: true
+        type: string
+
       app_name:
-        description: "App Name"
+        description: "Nama Aplikasi"
         required: true
-        default: "MyApp"
+        type: string
+
+      icon_url:
+        description: "URL Icon"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -30,12 +38,14 @@ jobs:
         with:
           flutter-version: "3.24.5"
 
-      - name: Flutter Pub Get
+      - name: Install Dependencies
         run: flutter pub get
 
-      - name: Inject URL
+      - name: Show Inputs
         run: |
-          sed -i "s|WEB_URL|${{ github.event.inputs.web_url }}|g" lib/main.dart
+          echo "APP_NAME=${{ github.event.inputs.app_name }}"
+          echo "WEB_URL=${{ github.event.inputs.web_url }}"
+          echo "ICON_URL=${{ github.event.inputs.icon_url }}"
 
       - name: Build APK
         run: flutter build apk --release
